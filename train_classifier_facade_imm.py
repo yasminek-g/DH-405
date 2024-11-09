@@ -123,7 +123,7 @@ if __name__ == '__main__':
     
 
 
-def visualize_reconstruction(model, dataloader, device, num_images=5):
+def visualize_reconstruction(model, dataloader, device, num_images=1):
     model.eval()
     images_shown = 0
     with torch.no_grad():
