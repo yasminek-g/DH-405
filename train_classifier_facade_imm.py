@@ -42,19 +42,20 @@ if __name__ == '__main__':
     setup_seed(args.seed)
 
     batch_size = args.batch_size
+    # batch_size = 1 
+
     load_batch_size = min(args.max_device_batch_size, batch_size)
     assert batch_size % load_batch_size == 0
     steps_per_update = batch_size // load_batch_size
 
     # Path to your dataset
-    data_dir = '/Users/oscargoudet/Desktop/FDH/project/sample_facades_2024_10_08/complete_facades/images'
+    data_dir = 'sample_facades_2024_10_08/complete_facades/images'
     
     # Define transformations
     transform = transforms.Compose([
-    transforms.Resize((32, 32)),  # Resize images to 32x32
+    # transforms.Resize((32, 32)),  # Resize images to 32x32 # No Need Now 
     transforms.ToTensor(),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
     # Load dataset
     dataset = ImageDataset(data_dir, transform=transform)
@@ -71,7 +72,7 @@ if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     # Initialize MAE model
-    model = MAE_ViT(image_size=32, patch_size=2, emb_dim=192, encoder_layer=12, encoder_head=3, decoder_layer=4, decoder_head=3, mask_ratio=0.75).to(device)
+    model = MAE_ViT(patch_size=2, emb_dim=192, encoder_layer=12, encoder_head=3, decoder_layer=4, decoder_head=3, mask_ratio=0.75).to(device)
 
     # Reconstruction loss (Mean Squared Error)
     reconstruction_loss_fn = torch.nn.MSELoss()
