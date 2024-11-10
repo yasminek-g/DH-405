@@ -27,17 +27,16 @@ class CauchyNMFWithOGM:
         self.weighting = weighting.lower()
         self.lpz_type = lpz_type.lower()
         self.m, self.n = V.shape
-        self.W = np.random.rand(self.m, self.r) * 0.01
-        self.H = np.random.rand(self.r, self.n) * 0.01
-            
+        self.W = np.random.rand(self.m, self.r)
+        self.H = np.random.rand(self.r, self.n)
+        
     def compute_lipschitz_constant(self, W, Q):
         """
-        Approximate Lipschitz constant with added regularization to avoid singularity issues.
+        Approximate Lipschitz constant based on LPZ_TYPE (here simplified)
         """
+        # Use broadcasting to align Q with W dimensions
         Q_expanded = Q.mean(axis=1)[:, np.newaxis] * np.ones((1, W.shape[1]))
-        # Adding regularization to prevent singular matrix issues
-        WQW = W.T @ (Q_expanded * W) + 1e-8 * np.eye(W.shape[1])
-        return np.linalg.norm(WQW, ord=2) * 0.01 # Scale down L to avoid large updates
+        return np.linalg.norm(W.T @ (Q_expanded * W), ord=2)
     
     def get_stop_criterion(self, Y, Grad):
         """
@@ -67,10 +66,9 @@ class CauchyNMFWithOGM:
             Grad = self.W.T @ (Q * (np.dot(self.W, Y) - self.V))
             alpha0 = 1
 
-            for k in range(10):  # Reduced sub-iterations to ensure control
+            for k in range(10):  # Set a max sub-iteration count
                 print("Sub-Iteration: ", k)
-                Grad = np.clip(Grad, -1e4, 1e4) # More aggressive clipping
-                H1 = np.maximum(0, Y - Grad / (L + 1e-6))  # Use a larger regularization in division
+                H1 = np.maximum(0, Y - Grad / L)
                 alpha1 = (1 + np.sqrt(4 * alpha0 ** 2 + 1)) / 2
                 Y = H1 + (alpha0 - 1) * (H1 - self.H) / alpha1
                 self.H = H1
@@ -81,7 +79,7 @@ class CauchyNMFWithOGM:
                     break
             
             # Update W using a similar non-negative projection
-            self.W *= np.dot(Q * self.V, self.H.T) / (np.dot(Q * np.dot(self.W, self.H), self.H.T) + 1e-6)
+            self.W *= np.dot(Q * self.V, self.H.T) / (np.dot(Q * np.dot(self.W, self.H), self.H.T) + 1e-10)
             
     def transform(self, data):
         """
@@ -96,40 +94,43 @@ class CauchyNMFWithOGM:
         self.fit()
         return self.transform(self.V)
 
-
-def load_and_preprocess_images_with_padding(image_folder, max_size=(512, 512), subset_size=300):
+# Load and preprocess images without resizing
+def load_and_preprocess_images(image_folder, subset_size=100):
+    # Collect image paths and limit to subset_size
     image_paths = glob.glob(f"{image_folder}/*.png")[:subset_size]
+    print("image process start")
+    # image_paths = glob.glob(f"{image_folder}/*.png")
+
     images = []
 
+    # Find the maximum dimensions across all images to set a consistent size
+    max_height, max_width = 0, 0
     for path in image_paths:
+        img = Image.open(path)
+        max_height = max(max_height, img.height)
+        max_width = max(max_width, img.width)
+
+    # Process each image: convert to grayscale, pad to max dimensions, and flatten
+    for path in image_paths:
+        print(f"Processing image: {path}")
         img = Image.open(path).convert('L')  # Convert to grayscale
-        width, height = img.size
-
-        # Resize image if larger than max_size while preserving aspect ratio
-        if width > max_size[0] or height > max_size[1]:
-            img.thumbnail(max_size, Image.LANCZOS)
-
-        # Create a 512x512 canvas and paste the resized image in the top-left corner
-        padded_img = Image.new('L', max_size)
-        padded_img.paste(img, (0, 0))
-
-        # Flatten and normalize the image
-        img_array = np.array(padded_img).flatten() / 255.0
+        padded_img = Image.new('L', (max_width, max_height))  # Create blank canvas
+        padded_img.paste(img, (0, 0))  # Paste original image in the top-left corner
+        img_array = np.array(padded_img).flatten()  # Flatten to a vector
         images.append(img_array)
 
     # Stack all image vectors to create the data matrix V
-    V = np.stack(images, axis=1)
-    return V, max_size
+    V = np.stack(images, axis=1) / 255.0  # Normalize pixel values to [0, 1]
+    return V, (max_height, max_width)
 
 
 # Step 2: Train Cauchy NMF model
-# image_folder = 'data/training_aug'  # Replace with your actual path
-image_folder = 'data/complete_facades/images'  # Replace with your actual path
-V, target_size = load_and_preprocess_images_with_padding(image_folder)
+image_folder = 'data/training_aug'  # Replace with your actual path
+V, target_size = load_and_preprocess_images(image_folder)
 print("image processing done")
 
 num_components = 10  # Number of components for NMF
-max_iter=15
+max_iter=10
 tol=1e-3
 gamma=0.1
 weighting='plain'
@@ -143,22 +144,19 @@ W_H_result = cauchy_nmf_model.fit_transform()
 # Step 3: Reconstruct and visualize images
 def visualize_reconstruction(V, W, H, target_size, num_images=5):
     # Reshape the flattened images to the original padded size
-    # Normalize the reconstructed images to [0, 1]
     reconstructed_images = np.dot(W, H)
-    reconstructed_images -= reconstructed_images.min()  # Shift to zero minimum
-    reconstructed_images /= reconstructed_images.max()  # Scale to [0, 1]
     fig, axes = plt.subplots(2, num_images, figsize=(15, 5))
     
     for i in range(num_images):
         # Original image
         original_image = V[:, i].reshape(target_size)
-        axes[0, i].imshow(original_image, cmap='gray', vmin=0, vmax=1)
+        axes[0, i].imshow(original_image, cmap='gray')
         axes[0, i].axis('off')
         axes[0, i].set_title("Original")
 
         # Reconstructed image
         reconstructed_image = reconstructed_images[:, i].reshape(target_size)
-        axes[1, i].imshow(reconstructed_image, cmap='gray', vmin=0, vmax=1)
+        axes[1, i].imshow(reconstructed_image, cmap='gray')
         axes[1, i].axis('off')
         axes[1, i].set_title("Reconstructed")
 
