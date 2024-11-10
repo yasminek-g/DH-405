@@ -159,7 +159,6 @@ def visualize_reconstruction(model, dataloader, device, num_images=1):
                 if images_shown >= num_images:
                     return  # Stop once we've shown the specified number of images
 
-# Example usage after training:
 # Load the test data
 test_dataloader = DataLoader(val_dataset, batch_size=load_batch_size, shuffle=True, num_workers=0)
 
