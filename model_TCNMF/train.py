@@ -95,7 +95,7 @@ class CauchyNMFWithOGM:
         return self.transform(self.V)
 
 # Load and preprocess images without resizing
-def load_and_preprocess_images(image_folder, subset_size=100):
+def load_and_preprocess_images(image_folder, subset_size=50):
     # Collect image paths and limit to subset_size
     image_paths = glob.glob(f"{image_folder}/*.png")[:subset_size]
     print("image process start")
