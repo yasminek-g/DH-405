@@ -75,16 +75,16 @@ def analyze_missing_areas_with_filters(image_array, epsilon_factor, black_thresh
 
         # Draw contours on the image for visualization
         cv2.drawContours(processed_image, [contour], -1, (0, 0, 255), 1)  # Original (red)
-        cv2.drawContours(processed_image, [simplified_contour], -1, (255, 0, 0), 2)  # Simplified (blue)
+        cv2.drawContours(processed_image, [simplified_contour], -1, (255, 0, 0), 1)  # Simplified (blue)
 
     return results, processed_image
 
 
 # Apply the function with area and y-coordinate filters
-alpha_ratio = 0.1
-max_y_value = 5  # Only consider regions with a y-coordinate below 80
+alpha_ratio = 0.3
+max_y_value = 0  # Only consider regions with a y-coordinate below 80
 
-image_array = "../facades_npy_flipped/14_[uid_1526]__rgb.npy"
+image_array = "data/facades_npy_flipped/1_[uid_W001]__rgb.npy"
 image_array = np.load(image_array)
 
 filtered_results, filtered_image = analyze_missing_areas_with_filters(
@@ -93,7 +93,7 @@ filtered_results, filtered_image = analyze_missing_areas_with_filters(
 
 # Visualize the filtered image
 plt.imshow(filtered_image)
-plt.title("Filtered Missing Areas (Area and Y-coordinate filters)")
+plt.title("Filtered Missing Areas (by RDP Ratio and Y-coordinate)")
 plt.axis('off')
 plt.show()
 
