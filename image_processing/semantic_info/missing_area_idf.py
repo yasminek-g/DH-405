@@ -52,6 +52,9 @@ def analyze_missing_areas_with_filters(image_array, epsilon_factor, black_thresh
         epsilon = epsilon_factor * cv2.arcLength(contour, closed=True)
         simplified_contour = cv2.approxPolyDP(contour, epsilon, closed=True)
 
+        # TODO: We can consider more contour properties to filter out unwanted regions here 
+        
+        
         # Compute the ratio of points
         original_length = len(contour)
         simplified_length = len(simplified_contour)
